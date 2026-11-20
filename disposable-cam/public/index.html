@@ -1,0 +1,41 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kamera Acara – Host</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:16px system-ui;background:#14110f;color:#f3ece2;display:grid;place-items:center;min-height:100vh;padding:20px}
+main{width:100%;max-width:420px;display:grid;gap:14px}h1{font-size:26px;margin:0}
+input,button{font:inherit;padding:14px;border-radius:12px;border:1px solid #3a322b;background:#211c18;color:inherit;width:100%}
+button{background:#e8742c;border:0;font-weight:600;cursor:pointer}label{display:grid;gap:6px;font-size:14px;color:#b9ad9d}
+img{width:100%;border-radius:12px;background:#fff}.card{background:#211c18;border-radius:16px;padding:16px;display:grid;gap:10px}
+@media print{body{background:#fff;color:#000}button,.np{display:none}}
+</style></head><body><main id="m"></main>
+<script>
+const m=document.getElementById('m'),q=new URLSearchParams(location.search),eid=q.get('e'),key=q.get('key');
+const fmt=s=>new Date(s).toLocaleString('id-ID',{dateStyle:'full',timeStyle:'short'});
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+eid?dash():form();
+function form(){
+  m.innerHTML=`<h1>📷 Buat Acara</h1>
+  <label>Nama acara<input id=n placeholder="Pernikahan Diana & Dan"></label>
+  <label>Jatah foto per tamu<input id=k type=number value=36 min=1 max=200></label>
+  <label>Waktu reveal<input id=r type=datetime-local></label>
+  <button id=b>Buat acara & QR</button><p id=err></p>`;
+  b.onclick=async()=>{
+    const res=await fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:n.value.trim(),quota:k.value,revealAt:r.value&&new Date(r.value).toISOString()})});
+    const d=await res.json();if(!res.ok)return err.textContent=d.error;
+    location.href=`/?e=${d.id}&key=${d.key}`;};
+}
+function dash(){
+  const link=`${location.origin}/e/${eid}`;
+  const load=async()=>{
+    const d=await(await fetch(`/api/events/${eid}?key=${key}`)).json();
+    if(d.error)return m.innerHTML=`<h1>${esc(d.error)}</h1>`;
+    m.innerHTML=`<h1>${esc(d.name)}</h1>
+    <div class=card><img src="/api/events/${eid}/qr"><button class=np onclick=print()>Cetak QR</button></div>
+    <div class=card><b>Link tamu</b><input readonly value="${link}" onclick=this.select()>
+    <span>Jatah: ${d.quota} foto/tamu</span><span>Reveal: ${fmt(d.revealAt)}</span>
+    <span>Foto masuk: <b>${d.total??0}</b></span>
+    ${d.revealed?`<a style="color:#e8742c" href="${link}">Buka galeri →</a>`:''}</div>
+    <small>Simpan alamat halaman ini (berisi kunci host).</small>`;};
+  load();setInterval(load,15000);
+}
+</script></body></html>
